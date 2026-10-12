@@ -3,27 +3,45 @@ import { formatTime } from '../lib/video';
 
 export function SlideGrid({
   slides,
-  onRemove,
+  excluded,
+  onToggle,
   onCycle,
   onOpen,
 }: {
   slides: ExtractedSlide[];
-  onRemove?: (id: number) => void;
+  excluded?: Set<number>;
+  onToggle?: (id: number) => void;
   onCycle?: (id: number) => void;
   onOpen?: (index: number) => void;
 }) {
   return (
     <ol className="grid" data-testid="slide-grid">
-      {slides.map((s, i) => (
-        <li key={s.id} className="slide">
-          <button className="slide-open" onClick={() => onOpen?.(i)} disabled={!onOpen} aria-label={`Ver diapositiva ${i + 1}`}>
-            <img src={chosenImage(s).url} alt={`Diapositiva ${i + 1}`} loading="lazy" />
-          </button>
-          <div className="slide-meta">
-            <span>
-              {i + 1} · {formatTime(s.start)}
-            </span>
-            <span className="row slide-actions">
+      {slides.map((s, i) => {
+        const selected = !excluded?.has(s.id);
+        return (
+          <li key={s.id} className={`slide ${selected ? '' : 'excluded'}`}>
+            <button
+              className="slide-open"
+              onClick={() => onOpen?.(i)}
+              disabled={!onOpen}
+              aria-label={`Ver diapositiva ${i + 1}`}
+            >
+              <img src={chosenImage(s).url} alt={`Diapositiva ${i + 1}`} loading="lazy" />
+            </button>
+            {onToggle && (
+              <label className="slide-check" title={selected ? 'Va en el PDF' : 'No va en el PDF'}>
+                <input
+                  type="checkbox"
+                  checked={selected}
+                  onChange={() => onToggle(s.id)}
+                  aria-label={`Incluir diapositiva ${i + 1} en el PDF`}
+                />
+              </label>
+            )}
+            <div className="slide-meta">
+              <span>
+                {i + 1} · {formatTime(s.start)}
+              </span>
               {onCycle && s.variants.length > 1 && (
                 <button
                   className="ghost small"
@@ -33,15 +51,10 @@ export function SlideGrid({
                   Versión {s.chosen + 1}/{s.variants.length}
                 </button>
               )}
-              {onRemove && (
-                <button className="ghost small" onClick={() => onRemove(s.id)} aria-label={`Quitar diapositiva ${i + 1}`}>
-                  Quitar
-                </button>
-              )}
-            </span>
-          </div>
-        </li>
-      ))}
+            </div>
+          </li>
+        );
+      })}
     </ol>
   );
 }

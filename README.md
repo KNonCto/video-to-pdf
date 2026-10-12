@@ -8,7 +8,7 @@ Página web que toma la grabación de una clase online y genera un PDF con una p
 - **Omite las repetidas**: si el profesor vuelve a una diapositiva anterior, no se agrega de nuevo.
 - **Une las animaciones**: si una diapositiva va mostrando viñetas de a una, se guarda sólo la versión completa. Se puede desactivar.
 - **Ignora lo que tapa la diapositiva**: si un menú, una paleta o una ventana aparece encima un momento, se usa la versión limpia.
-- **Te deja revisar antes de descargar**: puedes quitar diapositivas o elegir otra versión de una (por ejemplo, la que no tiene un menú encima).
+- **Te deja revisar antes de descargar**: marcas y desmarcas las diapositivas que van al PDF (sin borrar ninguna) y puedes elegir otra versión de una, por ejemplo la que no tiene un menú encima.
 - **Es privada**: todo ocurre en tu navegador. El video no se sube a ningún servidor, así que archivos de varios GB funcionan sin problema.
 
 ## Cómo usarla
@@ -22,7 +22,7 @@ La página no puede leer videos de YouTube directamente (YouTube no lo permite d
    winget install yt-dlp
    ```
    En Mac: `brew install yt-dlp`. Otras opciones en [la guía de instalación](https://github.com/yt-dlp/yt-dlp#installation).
-2. En la página, pega el link del video en **"¿El video está en YouTube?"** y elige el disco donde está tu carpeta Descargas.
+2. En la página, pega el link del video en **"¿El video está en YouTube?"** (panel de la derecha, abajo) y elige el disco donde está tu carpeta Descargas.
 3. Copia el comando que aparece, pégalo en PowerShell o cmd y pulsa Enter.
 
 El comando baja sólo ese video (aunque el link venga de una playlist), en la mejor calidad disponible, sin audio, y lo guarda en `<disco>:\Users\<tu usuario>\Downloads` con el nombre del video. Se ve así:
@@ -35,13 +35,14 @@ yt-dlp --no-playlist -f "bv*/b" -P "C:\Users\%USERNAME%\Downloads" -o "%(title)s
 
 ### 2. Genera el PDF
 
-1. Arrastra el video a la página o haz clic para elegirlo.
+1. Arrastra el video al panel de la izquierda o haz clic para elegirlo.
 2. Revisa el recuadro azul: es la zona que se guardará de cada diapositiva. Si no quedó bien, arrástralo o mueve sus bordes.
 3. Elige el tramo con la línea de tiempo (**Desde** / **Hasta**): deja fuera el principio y el final si ahí sólo se ven las cámaras de la gente. Al mover una manilla, la imagen muestra ese momento del video.
-4. Elige cada cuánto revisar el video (1 s por defecto) y pulsa **Extraer diapositivas**.
+4. En el panel de la derecha, elige cada cuánto revisar el video (1 s por defecto) y pulsa **Extraer diapositivas**. Mientras se analiza, ves el video y las diapositivas que van saliendo.
 5. Revisa el resultado:
-   - **Quitar** saca una diapositiva del PDF.
-   - **Versión 1/2** aparece cuando hay más de una versión de la misma diapositiva (con un menú encima, una animación a medias…) y cambia la que va al PDF.
+   - Haz clic en una diapositiva para verla en grande (con ← → pasas a la siguiente).
+   - La casilla de cada diapositiva indica si va al PDF. Desmarcar no borra nada: puedes volver a marcarla cuando quieras.
+   - **Versión 1/2** aparece cuando hay más de una versión de la misma diapositiva (con un menú encima, una animación a medias…). Puedes cambiarla ahí o en la vista grande.
 6. Pulsa **Descargar PDF**.
 
 ### Tiempo y formatos
@@ -53,7 +54,7 @@ yt-dlp --no-playlist -f "bv*/b" -P "C:\Users\%USERNAME%\Downloads" -o "%(title)s
 ### Limitaciones
 
 - Si una diapositiva estuvo tapada todo el tiempo, no hay versión limpia que elegir.
-- Lo que tapa la diapositiva se reconoce cuando tiene forma rectangular y dura poco (unos 8 s). Una burbuja de cámara redonda, por ejemplo, puede quedar como diapositiva aparte; se saca con **Quitar**.
+- Lo que tapa la diapositiva se reconoce cuando tiene forma rectangular y dura poco (unos 8 s). Una burbuja de cámara redonda, por ejemplo, puede quedar como diapositiva aparte; basta con desmarcarla.
 - La página procesa cualquier video, aunque no sea una presentación: no revisa si el contenido son diapositivas.
 
 ## Cómo funciona

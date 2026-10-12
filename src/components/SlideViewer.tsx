@@ -8,14 +8,16 @@ export function SlideViewer({
   onClose,
   onNavigate,
   onChoose,
-  onRemove,
+  selected,
+  onToggle,
 }: {
   slides: ExtractedSlide[];
   index: number;
   onClose: () => void;
   onNavigate: (i: number) => void;
   onChoose: (id: number, variantIndex: number) => void;
-  onRemove?: (id: number) => void;
+  selected: boolean;
+  onToggle?: (id: number) => void;
 }) {
   const dialog = useRef<HTMLDivElement>(null);
   const s = slides[index];
@@ -36,6 +38,7 @@ export function SlideViewer({
       if (e.key === 'Escape') onClose();
       else if (e.key === 'ArrowLeft' && hasPrev) onNavigate(index - 1);
       else if (e.key === 'ArrowRight' && hasNext) onNavigate(index + 1);
+      else if (s && onToggle && (e.key === 'x' || e.key === 'X')) onToggle(s.id);
       else if (s && /^[1-9]$/.test(e.key)) {
         const v = Number(e.key) - 1;
         if (v < s.variants.length) onChoose(s.id, v);
@@ -44,7 +47,7 @@ export function SlideViewer({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [index, hasPrev, hasNext, s, onClose, onNavigate, onChoose]);
+  }, [index, hasPrev, hasNext, s, onClose, onNavigate, onChoose, onToggle]);
 
   if (!s) return null;
   const image = s.variants[s.chosen];
@@ -66,10 +69,10 @@ export function SlideViewer({
             Diapositiva {index + 1} de {slides.length} · {formatTime(s.start)}
           </span>
           <span className="row viewer-actions">
-            {onRemove && (
-              <button className="ghost small" onClick={() => onRemove(s.id)}>
-                Quitar
-              </button>
+            {onToggle && (
+              <label className="viewer-check small">
+                <input type="checkbox" checked={selected} onChange={() => onToggle(s.id)} /> Incluir en el PDF
+              </label>
             )}
             <button className="ghost small" onClick={onClose} aria-label="Cerrar">
               ✕
@@ -77,7 +80,7 @@ export function SlideViewer({
           </span>
         </div>
 
-        <div className="viewer-stage">
+        <div className={`viewer-stage ${selected ? '' : 'excluded'}`}>
           <button
             className="viewer-nav prev"
             onClick={() => onNavigate(index - 1)}

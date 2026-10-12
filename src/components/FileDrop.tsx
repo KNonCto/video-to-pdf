@@ -33,7 +33,7 @@ function CopyBox({ text, testId }: { text: string; testId?: string }) {
   );
 }
 
-function YtDlpHelper() {
+export function YtDlpHelper() {
   const [link, setLink] = useState('');
   const [drive, setDrive] = useState(loadDrive);
   const url = normalizeVideoUrl(link);
@@ -41,7 +41,9 @@ function YtDlpHelper() {
   return (
     <section className="help stack">
       <h2>¿El video está en YouTube?</h2>
-      <p className="muted small">Pega el link y copia el comando para bajarlo en la mejor calidad a tu carpeta Descargas.</p>
+      <p className="muted small">
+        Primero hay que bajarlo. Pega el link y copia el comando para bajarlo en la mejor calidad a tu carpeta Descargas.
+      </p>
       <div className="ytdlp-inputs">
         <input
           type="url"
@@ -82,7 +84,7 @@ function YtDlpHelper() {
         <li>Abre PowerShell o cmd, pega el comando y pulsa Enter.</li>
         <li>
           El video queda en <code>{drive}:\Users\&lt;tu usuario&gt;\Downloads</code>, con el nombre del video. Luego
-          arrástralo arriba.
+          arrástralo al panel de la izquierda.
         </li>
         <li>
           ¿No tienes yt-dlp? Instálalo una vez con:
@@ -103,37 +105,34 @@ export function FileDrop({ onFile }: { onFile: (f: File) => void }) {
   };
 
   return (
-    <div className="stack">
-      <div
-        className={`drop ${over ? 'over' : ''}`}
-        onClick={() => input.current?.click()}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setOver(true);
-        }}
-        onDragLeave={() => setOver(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setOver(false);
-          pick(e.dataTransfer.files);
-        }}
-      >
-        <strong>Arrastra el video de la clase aquí</strong>
-        <span className="muted">o haz clic para elegirlo (MP4 o WebM)</span>
-        <input
-          ref={input}
-          type="file"
-          accept="video/*"
-          data-testid="file-input"
-          hidden
-          onChange={(e) => pick(e.target.files)}
-        />
-      </div>
-      <p className="muted small">
-        El video no se sube a ningún servidor: se procesa en tu navegador, así que archivos de varios GB funcionan
-        igual.
-      </p>
-      <YtDlpHelper />
+    <div
+      className={`drop ${over ? 'over' : ''}`}
+      onClick={() => input.current?.click()}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setOver(false);
+        pick(e.dataTransfer.files);
+      }}
+    >
+      <span className="drop-icon" aria-hidden>
+        ⬆
+      </span>
+      <strong>Arrastra el video de la clase aquí</strong>
+      <span className="muted">o haz clic para elegirlo (MP4 o WebM)</span>
+      <span className="muted small">Archivos de varios GB funcionan igual: el video no se sube a ningún lado.</span>
+      <input
+        ref={input}
+        type="file"
+        accept="video/*"
+        data-testid="file-input"
+        hidden
+        onChange={(e) => pick(e.target.files)}
+      />
     </div>
   );
 }

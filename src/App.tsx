@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FileDrop } from './components/FileDrop';
+import { FileDrop, YtDlpHelper } from './components/FileDrop';
 import { CropEditor } from './components/CropEditor';
 import { SlideGrid } from './components/SlideGrid';
 import { LivePreview } from './components/LivePreview';
@@ -22,6 +22,8 @@ export default function App() {
   const [rect, setRect] = useState<Rect>({ x: 0, y: 0, w: 1, h: 1 });
   const [preview, setPreview] = useState('');
   const [slides, setSlides] = useState<ExtractedSlide[]>([]);
+  /** Diapositivas desmarcadas: no van al PDF, pero se pueden volver a marcar. */
+  const [excluded, setExcluded] = useState<Set<number>>(new Set());
   const [step, setStep] = useState(1);
   const [mergeBuilds, setMergeBuilds] = useState(true);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -36,6 +38,15 @@ export default function App() {
 
   useEffect(() => () => reset(), []);
 
+  function clearSlides() {
+    setSlides((prev) => {
+      prev.forEach(revokeSlide);
+      return [];
+    });
+    setExcluded(new Set());
+    setViewerIndex(null);
+  }
+
   function reset() {
     abort.current?.abort();
     if (video.current) {
@@ -43,14 +54,11 @@ export default function App() {
       video.current.video.removeAttribute('src');
       video.current = null;
     }
-    setSlides((prev) => {
-      prev.forEach(revokeSlide);
-      return [];
-    });
+    clearSlides();
     setStage('idle');
-    setViewerIndex(null);
     setProgress(0);
     setPreview('');
+    setFileName('');
   }
 
   async function onFile(file: File) {
@@ -75,10 +83,11 @@ export default function App() {
 
   async function analyze() {
     if (!video.current) return;
+    clearSlides();
     setStage('analyzing');
     setProgress(0);
+    setProgressTime(range.start);
     setStartedAt(performance.now());
-    setSlides([]);
     const ctrl = new AbortController();
     abort.current = ctrl;
     try {
@@ -135,11 +144,13 @@ export default function App() {
     setStage('idle');
   }
 
+  const selected = slides.filter((s) => !excluded.has(s.id));
+
   async function downloadPdf() {
     setPdfBusy(true);
     try {
       const { buildPdf } = await import('./lib/pdf');
-      const blob = await buildPdf(slides.map((s) => ({ blob: chosenImage(s).blob, width: s.width, height: s.height })));
+      const blob = await buildPdf(selected.map((s) => ({ blob: chosenImage(s).blob, width: s.width, height: s.height })));
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -164,15 +175,16 @@ export default function App() {
     if (s) chooseVariant(id, (s.chosen + 1) % s.variants.length);
   }
 
-  const closeViewer = useCallback(() => setViewerIndex(null), []);
+  const toggleSelected = useCallback((id: number) => {
+    setExcluded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
-  function removeSlide(id: number) {
-    const s = slides.find((x) => x.id === id);
-    if (s) revokeSlide(s);
-    const rest = slides.filter((x) => x.id !== id);
-    setSlides(rest);
-    if (viewerIndex !== null) setViewerIndex(rest.length ? Math.min(viewerIndex, rest.length - 1) : null);
-  }
+  const closeViewer = useCallback(() => setViewerIndex(null), []);
 
   const eta = (() => {
     if (stage !== 'analyzing' || progress < 0.02) return '';
@@ -180,46 +192,37 @@ export default function App() {
     return `quedan ~${formatTime((elapsed / progress) * (1 - progress))}`;
   })();
 
+  const canSelect = stage === 'review';
+
   return (
-    <main>
-      <header>
-        <h1>Video a PDF de diapositivas</h1>
-        <p className="muted">
-          Saca las diapositivas de la grabación de una clase: recorta bordes y cámara, y omite las repetidas.
-        </p>
-      </header>
+    <div className="layout">
+      <main className="workspace">
+        {stage === 'idle' && <FileDrop onFile={onFile} />}
 
-      {error && (
-        <div className="error" role="alert">
-          {error}
-        </div>
-      )}
+        {stage === 'detecting' && (
+          <div className="panel placeholder">
+            <strong>Buscando dónde está la diapositiva…</strong>
+            <Progress value={progress} />
+            <span className="muted small">Se revisan fotogramas de todo el video para encontrar la zona de las diapositivas.</span>
+          </div>
+        )}
 
-      {stage === 'idle' && <FileDrop onFile={onFile} />}
-
-      {stage === 'detecting' && (
-        <section className="stack">
-          <h2>Buscando dónde está la diapositiva…</h2>
-          <Progress value={progress} />
-          <button className="ghost" onClick={reset}>
-            Cancelar
-          </button>
-        </section>
-      )}
-
-      {stage === 'crop' && (
-        <section className="stack">
-          <h2>Revisa el recorte</h2>
-          <p className="muted">
-            El recuadro azul es lo que se guardará de cada diapositiva. Arrástralo o mueve sus bordes si hace falta.
-          </p>
-          <CropEditor imageUrl={preview} rect={rect} onChange={setRect} />
-          <div className="stack tight">
-            <h3>¿Desde dónde hasta dónde?</h3>
-            <p className="muted small">
-              Deja fuera el principio y el final si ahí se ven las cámaras de la gente en vez de diapositivas. Al mover
-              una manilla, la imagen de arriba muestra ese momento del video.
-            </p>
+        {stage === 'crop' && (
+          <div className="stack">
+            <div className="stack tight">
+              <h2>1. Revisa el recorte</h2>
+              <p className="muted small">
+                El recuadro azul es lo que se guardará de cada diapositiva. Arrástralo o mueve sus bordes si hace falta.
+              </p>
+            </div>
+            <CropEditor imageUrl={preview} rect={rect} onChange={setRect} />
+            <div className="stack tight">
+              <h2>2. Elige el tramo</h2>
+              <p className="muted small">
+                Deja fuera el principio y el final si ahí se ven las cámaras de la gente en vez de diapositivas. Al mover
+                una manilla, la imagen de arriba muestra ese momento del video.
+              </p>
+            </div>
             <TimeRange
               duration={video.current?.video.duration ?? 0}
               start={range.start}
@@ -228,69 +231,138 @@ export default function App() {
               onPreview={showFrameAt}
             />
           </div>
-          <div className="options">
-            <label>
-              Revisar cada{' '}
-              <select value={step} onChange={(e) => setStep(Number(e.target.value))}>
-                {STEPS.map((s) => (
-                  <option key={s} value={s}>
-                    {s} s
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <input type="checkbox" checked={mergeBuilds} onChange={(e) => setMergeBuilds(e.target.checked)} /> Unir
-              animaciones (guardar sólo la diapo completa)
-            </label>
-          </div>
-          <div className="row">
-            <button className="ghost" onClick={reset}>
-              Elegir otro video
-            </button>
-            <button className="primary" onClick={analyze}>
-              Extraer diapositivas
-            </button>
-          </div>
-        </section>
-      )}
+        )}
 
-      {stage === 'analyzing' && (
-        <section className="stack">
-          <h2>
-            Extrayendo diapositivas… {slides.length} encontradas
-          </h2>
-          <Progress value={progress} />
-          <p className="muted small">
-            Minuto {formatTime(progressTime)} de {formatTime(range.end)} {eta && `· ${eta}`}
-          </p>
-          <div className="row">
-            <button className="ghost" onClick={() => abort.current?.abort()}>
-              Detener y usar lo encontrado
-            </button>
+        {stage === 'analyzing' && video.current && (
+          <div className="stack">
+            <LivePreview video={video.current.video} rect={rect} captured={slides.length} />
+            <SlideGrid slides={slides} onOpen={setViewerIndex} />
           </div>
-          {video.current && <LivePreview video={video.current.video} rect={rect} captured={slides.length} />}
-          <SlideGrid slides={slides} onOpen={setViewerIndex} />
-        </section>
-      )}
+        )}
 
-      {stage === 'review' && (
-        <section className="stack">
-          <h2 data-testid="result-title">{slides.length} diapositivas</h2>
-          <div className="row">
-            <button className="ghost" onClick={reset}>
-              Empezar de nuevo
-            </button>
-            <button className="ghost" onClick={() => setStage('crop')} disabled={!video.current}>
-              Cambiar recorte
-            </button>
-            <button className="primary" onClick={downloadPdf} disabled={!slides.length || pdfBusy}>
-              {pdfBusy ? 'Generando…' : 'Descargar PDF'}
-            </button>
+        {stage === 'review' && (
+          <div className="stack">
+            <p className="muted small">
+              Haz clic en una diapositiva para verla en grande. Desmarca las que no quieras en el PDF (puedes volver a
+              marcarlas cuando quieras).
+            </p>
+            <SlideGrid
+              slides={slides}
+              excluded={excluded}
+              onToggle={toggleSelected}
+              onCycle={cycleVariant}
+              onOpen={setViewerIndex}
+            />
           </div>
-          <SlideGrid slides={slides} onRemove={removeSlide} onCycle={cycleVariant} onOpen={setViewerIndex} />
-        </section>
-      )}
+        )}
+      </main>
+
+      <aside className="sidebar">
+        <div className="side-top panel">
+          <header className="stack tight">
+            <h1>Video a PDF de diapositivas</h1>
+            <p className="muted small">
+              Saca las diapositivas de la grabación de una clase: recorta bordes y cámara, y omite las repetidas.
+            </p>
+          </header>
+
+          {error && (
+            <div className="error" role="alert">
+              {error}
+            </div>
+          )}
+
+          {fileName && stage !== 'idle' && (
+            <p className="file-name small" title={fileName}>
+              🎬 {fileName}
+            </p>
+          )}
+
+          {stage === 'idle' && (
+            <p className="muted small">Para empezar, arrastra el video de la clase al panel de la izquierda.</p>
+          )}
+
+          {stage === 'detecting' && (
+            <div className="row">
+              <button className="ghost" onClick={reset}>
+                Cancelar
+              </button>
+            </div>
+          )}
+
+          {stage === 'crop' && (
+            <div className="stack tight">
+              <label className="option">
+                Revisar cada{' '}
+                <select value={step} onChange={(e) => setStep(Number(e.target.value))}>
+                  {STEPS.map((s) => (
+                    <option key={s} value={s}>
+                      {s} s
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="option">
+                <input type="checkbox" checked={mergeBuilds} onChange={(e) => setMergeBuilds(e.target.checked)} /> Unir
+                animaciones (guardar sólo la diapo completa)
+              </label>
+              <button className="primary wide" onClick={analyze}>
+                Extraer diapositivas
+              </button>
+              <button className="ghost wide" onClick={reset}>
+                Elegir otro video
+              </button>
+            </div>
+          )}
+
+          {stage === 'analyzing' && (
+            <div className="stack tight">
+              <strong>Extrayendo diapositivas… {slides.length} encontradas</strong>
+              <Progress value={progress} />
+              <span className="muted small">
+                Minuto {formatTime(progressTime)} de {formatTime(range.end)} {eta && `· ${eta}`}
+              </span>
+              <button className="ghost wide" onClick={() => abort.current?.abort()}>
+                Detener y usar lo encontrado
+              </button>
+              <button className="ghost wide" onClick={reset}>
+                Empezar de nuevo
+              </button>
+            </div>
+          )}
+
+          {stage === 'review' && (
+            <div className="stack tight">
+              <strong data-testid="result-title">{slides.length} diapositivas</strong>
+              <span className="muted small" data-testid="selected-count">
+                {selected.length} de {slides.length} seleccionadas para el PDF
+              </span>
+              <div className="row">
+                <button className="ghost small" onClick={() => setExcluded(new Set())}>
+                  Marcar todas
+                </button>
+                <button className="ghost small" onClick={() => setExcluded(new Set(slides.map((s) => s.id)))}>
+                  Desmarcar todas
+                </button>
+              </div>
+              <button className="primary wide" onClick={downloadPdf} disabled={!selected.length || pdfBusy}>
+                {pdfBusy ? 'Generando…' : `Descargar PDF (${selected.length})`}
+              </button>
+              <button className="ghost wide" onClick={() => setStage('crop')} disabled={!video.current}>
+                Cambiar recorte o tramo
+              </button>
+              <button className="ghost wide" onClick={reset}>
+                Empezar de nuevo
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="side-help panel">
+          <YtDlpHelper />
+          <p className="muted small privacy">Todo se procesa localmente en tu navegador: el video no se sube a ningún servidor.</p>
+        </div>
+      </aside>
 
       {viewerIndex !== null && slides[viewerIndex] && (stage === 'analyzing' || stage === 'review') && (
         <SlideViewer
@@ -299,12 +371,11 @@ export default function App() {
           onClose={closeViewer}
           onNavigate={setViewerIndex}
           onChoose={chooseVariant}
-          onRemove={stage === 'review' ? removeSlide : undefined}
+          selected={!excluded.has(slides[viewerIndex].id)}
+          onToggle={canSelect ? toggleSelected : undefined}
         />
       )}
-
-      <footer className="muted small">Todo se procesa localmente en tu navegador.</footer>
-    </main>
+    </div>
   );
 }
 

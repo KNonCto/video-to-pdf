@@ -29,6 +29,14 @@ test('extrae 4 diapositivas recortadas y sin el menú que las tapa', async ({ pa
 
   await expect(page.getByTestId('result-title')).toHaveText('4 diapositivas', { timeout: 120_000 });
 
+  // Selección: desmarcar una diapo no la borra; se puede volver a marcar.
+  await page.getByLabel('Incluir diapositiva 4 en el PDF').uncheck();
+  await expect(page.getByTestId('selected-count')).toHaveText('3 de 4 seleccionadas para el PDF');
+  await page.getByRole('button', { name: 'Ver diapositiva 4' }).click();
+  await page.getByTestId('slide-viewer').getByLabel('Incluir en el PDF').check();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('selected-count')).toHaveText('4 de 4 seleccionadas para el PDF');
+
   // Visor: abrir la diapo 2 (la que tuvo el menú encima) y elegir otra versión ahí.
   await page.getByRole('button', { name: 'Ver diapositiva 2' }).click();
   const viewer = page.getByTestId('slide-viewer');
@@ -45,7 +53,7 @@ test('extrae 4 diapositivas recortadas y sin el menú que las tapa', async ({ pa
   await page.keyboard.press('Escape');
 
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Descargar PDF' }).click();
+  await page.getByRole('button', { name: /Descargar PDF/ }).click();
   const pdfPath = info.outputPath('clase.pdf');
   await (await download).saveAs(pdfPath);
 
