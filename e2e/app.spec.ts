@@ -21,6 +21,21 @@ test('extrae 4 diapositivas recortadas y sin el menú que las tapa', async ({ pa
 
   await expect(page.getByTestId('result-title')).toHaveText('4 diapositivas', { timeout: 120_000 });
 
+  // Visor: abrir la diapo 2 (la que tuvo el menú encima) y elegir otra versión ahí.
+  await page.getByRole('button', { name: 'Ver diapositiva 2' }).click();
+  const viewer = page.getByTestId('slide-viewer');
+  await expect(viewer).toBeVisible();
+  await expect(viewer.getByRole('button', { name: /^Versión \d$/ })).toHaveCount(2);
+  await viewer.getByRole('button', { name: 'Versión 1' }).click();
+  await expect(viewer.getByRole('button', { name: 'Versión 1' })).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('Escape');
+  await expect(viewer).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Versión 1/2' })).toBeVisible();
+  // volver a la versión limpia para el chequeo del PDF
+  await page.getByRole('button', { name: 'Ver diapositiva 2' }).click();
+  await page.keyboard.press('2');
+  await page.keyboard.press('Escape');
+
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Descargar PDF' }).click();
   const pdfPath = info.outputPath('clase.pdf');

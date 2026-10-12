@@ -106,3 +106,45 @@ select { font: inherit; padding: 4px 8px; border-radius: 6px; border: 1px solid 
   position: absolute; top: 12px; left: 12px; line-height: 1.4; font-size: 0.85rem; font-weight: 600;
   background: #22c55e; color: #052e14; padding: 4px 10px; border-radius: 99px;
 }
+
+.slide-open { display: block; width: 100%; padding: 0; border: 0; border-radius: 0; background: none; cursor: zoom-in; }
+.slide-open:disabled { cursor: default; opacity: 1; }
+.slide-open img { transition: opacity 0.15s; }
+.slide-open:not(:disabled):hover img { opacity: 0.85; }
+
+.viewer-backdrop {
+  position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.82);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.viewer {
+  width: min(1200px, 100%); max-height: 100%; display: flex; flex-direction: column; gap: 12px;
+  background: var(--surface); color: var(--text); border-radius: 14px; padding: 12px 16px 16px; outline: none; overflow: auto;
+}
+.viewer-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 0.9rem; color: var(--muted); }
+.viewer-actions { gap: 6px; }
+.viewer-stage { position: relative; display: flex; align-items: center; justify-content: center; background: #000; border-radius: 8px; }
+.viewer-image { display: block; max-width: 100%; max-height: 70vh; object-fit: contain; }
+.viewer-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; padding: 0;
+  border-radius: 50%; border: 0; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 1.8rem; line-height: 1;
+}
+.viewer-nav.prev { left: 10px; }
+.viewer-nav.next { right: 10px; }
+.viewer-nav:disabled { opacity: 0.2; }
+.viewer-variants { display: flex; flex-direction: column; gap: 8px; }
+.variant-list { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.variant {
+  flex: 0 0 auto; width: 180px; padding: 0; overflow: hidden; display: flex; flex-direction: column;
+  border: 2px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 0.8rem;
+}
+.variant img { width: 100%; display: block; }
+.variant span { padding: 4px 8px; text-align: left; color: var(--muted); }
+.variant.chosen { border-color: var(--accent); }
+.variant.chosen span { color: var(--accent); font-weight: 600; }
+
+@media (max-width: 600px) {
+  .viewer-backdrop { padding: 0; }
+  .viewer { border-radius: 0; height: 100%; padding: 12px; }
+  .viewer-nav { width: 36px; height: 36px; font-size: 1.4rem; }
+  .variant { width: 140px; }
+}

@@ -5,16 +5,20 @@ export function SlideGrid({
   slides,
   onRemove,
   onCycle,
+  onOpen,
 }: {
   slides: ExtractedSlide[];
   onRemove?: (id: number) => void;
   onCycle?: (id: number) => void;
+  onOpen?: (index: number) => void;
 }) {
   return (
     <ol className="grid" data-testid="slide-grid">
       {slides.map((s, i) => (
         <li key={s.id} className="slide">
-          <img src={chosenImage(s).url} alt={`Diapositiva ${i + 1}`} loading="lazy" />
+          <button className="slide-open" onClick={() => onOpen?.(i)} disabled={!onOpen} aria-label={`Ver diapositiva ${i + 1}`}>
+            <img src={chosenImage(s).url} alt={`Diapositiva ${i + 1}`} loading="lazy" />
+          </button>
           <div className="slide-meta">
             <span>
               {i + 1} · {formatTime(s.start)}

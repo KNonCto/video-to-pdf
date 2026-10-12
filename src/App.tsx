@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FileDrop } from './components/FileDrop';
 import { CropEditor } from './components/CropEditor';
 import { SlideGrid } from './components/SlideGrid';
 import { LivePreview } from './components/LivePreview';
+import { SlideViewer } from './components/SlideViewer';
 import { Rect } from './lib/image';
 import { loadVideo, formatTime } from './lib/video';
 import { CancelledError, ExtractedSlide, chosenImage, detectCrop, extractSlides } from './lib/pipeline';
@@ -24,6 +25,7 @@ export default function App() {
   const [mergeBuilds, setMergeBuilds] = useState(true);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [startedAt, setStartedAt] = useState(0);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   const video = useRef<{ video: HTMLVideoElement; url: string } | null>(null);
   const abort = useRef<AbortController | null>(null);
@@ -42,6 +44,7 @@ export default function App() {
       return [];
     });
     setStage('idle');
+    setViewerIndex(null);
     setProgress(0);
     setPreview('');
   }
@@ -127,18 +130,23 @@ export default function App() {
     }
   }
 
+  const chooseVariant = useCallback((id: number, variantIndex: number) => {
+    setSlides((prev) => prev.map((s) => (s.id === id ? { ...s, chosen: variantIndex } : s)));
+  }, []);
+
   function cycleVariant(id: number) {
-    setSlides((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, chosen: (s.chosen + 1) % s.variants.length } : s)),
-    );
+    const s = slides.find((x) => x.id === id);
+    if (s) chooseVariant(id, (s.chosen + 1) % s.variants.length);
   }
 
+  const closeViewer = useCallback(() => setViewerIndex(null), []);
+
   function removeSlide(id: number) {
-    setSlides((prev) => {
-      const s = prev.find((x) => x.id === id);
-      if (s) revokeSlide(s);
-      return prev.filter((x) => x.id !== id);
-    });
+    const s = slides.find((x) => x.id === id);
+    if (s) revokeSlide(s);
+    const rest = slides.filter((x) => x.id !== id);
+    setSlides(rest);
+    if (viewerIndex !== null) setViewerIndex(rest.length ? Math.min(viewerIndex, rest.length - 1) : null);
   }
 
   const eta = (() => {
@@ -223,7 +231,7 @@ export default function App() {
             </button>
           </div>
           {video.current && <LivePreview video={video.current.video} rect={rect} captured={slides.length} />}
-          <SlideGrid slides={slides} />
+          <SlideGrid slides={slides} onOpen={setViewerIndex} />
         </section>
       )}
 
@@ -241,8 +249,19 @@ export default function App() {
               {pdfBusy ? 'Generando…' : 'Descargar PDF'}
             </button>
           </div>
-          <SlideGrid slides={slides} onRemove={removeSlide} onCycle={cycleVariant} />
+          <SlideGrid slides={slides} onRemove={removeSlide} onCycle={cycleVariant} onOpen={setViewerIndex} />
         </section>
+      )}
+
+      {viewerIndex !== null && slides[viewerIndex] && (stage === 'analyzing' || stage === 'review') && (
+        <SlideViewer
+          slides={slides}
+          index={viewerIndex}
+          onClose={closeViewer}
+          onNavigate={setViewerIndex}
+          onChoose={chooseVariant}
+          onRemove={stage === 'review' ? removeSlide : undefined}
+        />
       )}
 
       <footer className="muted small">Todo se procesa localmente en tu navegador.</footer>
