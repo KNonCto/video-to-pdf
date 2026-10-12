@@ -9,9 +9,9 @@ Página web estática que toma la grabación de una clase y genera un PDF con un
 
 ## Uso
 
-1. Baja el video. Para YouTube, con [yt-dlp](https://github.com/yt-dlp/yt-dlp#installation), en 720p y sin audio (pesa mucho menos y alcanza para las diapositivas):
-   ```sh
-   yt-dlp -f "bv*[ext=mp4][height<=720]" -o clase.mp4 "LINK_DEL_VIDEO"
+1. Baja el video con [yt-dlp](https://github.com/yt-dlp/yt-dlp#installation) (en Windows: `winget install yt-dlp`). En la página, pega el link de YouTube y elige el disco: te arma el comando listo para copiar, que baja el video en la mejor calidad a `<disco>:\Users\<usuario>\Downloads`. Por ejemplo:
+   ```
+   yt-dlp --no-playlist -f "bv*/b" -P "C:\Users\%USERNAME%\Downloads" -o "%(title)s.%(ext)s" "https://www.youtube.com/watch?v=ID"
    ```
 2. Abre la página y arrastra el video.
 3. Revisa el recuadro de recorte que se detectó (puedes moverlo o ajustar sus bordes) y pulsa **Extraer diapositivas**.
