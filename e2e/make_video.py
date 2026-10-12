@@ -1,8 +1,8 @@
 """Genera un video sintético de una "clase" para el test E2E.
 
 1280x720, la diapositiva ocupa x∈[0,960) y∈[90,630) (franjas negras arriba y abajo) y hay
-una "cámara" con movimiento a la derecha. Secuencia: S1, S2, S3 parcial → S3 completa
-(animación), vuelta a S1, S4, negro. Se esperan 4 diapositivas: S1, S2, S3 completa, S4.
+una "cámara" con movimiento a la derecha. Secuencia: S1, S2 (con un menú magenta encima los
+primeros segundos), S3 parcial → S3 completa (animación), vuelta a S1, S4, negro. Se esperan 4 diapositivas: S1, S2, S3 completa, S4.
 
 Uso: python3 e2e/make_video.py salida.webm
 """
@@ -46,6 +46,9 @@ BLACK = np.zeros_like(S1)
 # (inicio, fin, diapo)
 TIMELINE = [(0, 10, S1), (10, 20, S2), (20, 27, S3a), (27, 35, S3b), (35, 44, S1), (44, 57, S4), (57, 60, BLACK)]
 FADE = 0.5
+# "menú de colores" magenta que tapa la esquina inferior derecha de S2 por unos segundos
+MENU = (10.6, 13.6)
+MENU_COLOR = (230, 0, 200)
 
 
 def content_at(t):
@@ -71,6 +74,8 @@ def main(out):
         t = f / FPS
         frame = np.zeros((H, W, 3), dtype=np.float32)
         frame[SY0:SY1, SX0:SX1] = content_at(t)
+        if MENU[0] <= t < MENU[1]:
+            frame[SY0 + 270:SY1 - 20, SX0 + 480:SX1 - 20] = MENU_COLOR
         # cámara: fondo, "persona" que se balancea y ruido
         frame[CY0:CY1, CX0:CX1] = (70, 80, 90)
         px = int(CX0 + 90 + 50 * np.sin(t * 2.3))

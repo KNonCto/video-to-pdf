@@ -93,3 +93,4 @@ select { font: inherit; padding: 4px 8px; border-radius: 6px; border: 1px solid 
 .slide { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
 .slide img { width: 100%; display: block; }
 .slide-meta { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; font-size: 0.85rem; color: var(--muted); }
+.slide-actions { gap: 6px; }

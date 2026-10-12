@@ -168,3 +168,147 @@ export function countOnes(m: Uint8Array): number {
   for (const v of m) n += v;
   return n;
 }
+
+export interface LocalDiff {
+  /** Fracción de celdas de la grilla con cambios. */
+  changedCells: number;
+  /** Grupos conexos de celdas cambiadas. */
+  blobs: number;
+  /** Fracción de píxeles cambiados fuera de las celdas marcadas. */
+  outsideChange: number;
+}
+
+/**
+ * Compara dos imágenes por zonas (grilla de cols×rows celdas) para saber si la diferencia
+ * está concentrada en una región (un menú o algo que tapa la diapo) o repartida por toda
+ * la imagen (otra diapositiva).
+ */
+export function localDifference(a: Gray, b: Gray, threshold = 25, cols = 16, rows = 9): LocalDiff {
+  const { width: w, height: h } = a;
+  const cellChanged = new Uint8Array(cols * rows);
+  const cellCount = new Int32Array(cols * rows);
+  const cellTotal = new Int32Array(cols * rows);
+  const changed = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const cy = Math.min(rows - 1, Math.floor((y * rows) / h));
+    for (let x = 0; x < w; x++) {
+      const cx = Math.min(cols - 1, Math.floor((x * cols) / w));
+      const i = y * w + x;
+      const c = cy * cols + cx;
+      cellTotal[c]++;
+      if (Math.abs(a.data[i] - b.data[i]) > threshold) {
+        changed[i] = 1;
+        cellCount[c]++;
+      }
+    }
+  }
+  let nChanged = 0;
+  for (let c = 0; c < cols * rows; c++) {
+    if (cellCount[c] > 0.08 * cellTotal[c]) {
+      cellChanged[c] = 1;
+      nChanged++;
+    }
+  }
+  // grupos conexos (vecindad 8) de celdas cambiadas
+  const seen = new Uint8Array(cols * rows);
+  let blobs = 0;
+  for (let c = 0; c < cols * rows; c++) {
+    if (!cellChanged[c] || seen[c]) continue;
+    blobs++;
+    const stack = [c];
+    seen[c] = 1;
+    while (stack.length) {
+      const k = stack.pop()!;
+      const kx = k % cols;
+      const ky = (k - kx) / cols;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = kx + dx;
+          const ny = ky + dy;
+          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+          const n = ny * cols + nx;
+          if (cellChanged[n] && !seen[n]) {
+            seen[n] = 1;
+            stack.push(n);
+          }
+        }
+      }
+    }
+  }
+  let outside = 0;
+  let outsideTotal = 0;
+  for (let y = 0; y < h; y++) {
+    const cy = Math.min(rows - 1, Math.floor((y * rows) / h));
+    for (let x = 0; x < w; x++) {
+      const cx = Math.min(cols - 1, Math.floor((x * cols) / w));
+      if (cellChanged[cy * cols + cx]) continue;
+      outsideTotal++;
+      outside += changed[y * w + x];
+    }
+  }
+  return {
+    changedCells: nChanged / (cols * rows),
+    blobs,
+    outsideChange: outsideTotal ? outside / outsideTotal : 0,
+  };
+}
+
+/**
+ * ¿La diferencia entre `a` y `b` tiene forma de panel rectangular (un menú, una paleta,
+ * una ventana) puesto encima? Busca el rectángulo que encierra los píxeles cambiados y
+ * exige que cada lado que no toca el borde de la imagen sea una línea recta marcada en
+ * alguna de las dos imágenes. El texto distinto de otra diapositiva no forma esos bordes.
+ */
+export function isRectangularOverlay(a: Gray, b: Gray, threshold = 25): boolean {
+  const { width: w, height: h } = a;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  // filas/columnas con suficientes cambios (ignora píxeles sueltos por compresión)
+  const rowCount = new Int32Array(h);
+  const colCount = new Int32Array(w);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (Math.abs(a.data[y * w + x] - b.data[y * w + x]) > threshold) {
+        rowCount[y]++;
+        colCount[x]++;
+      }
+    }
+  }
+  const minRow = Math.max(2, w * 0.01);
+  const minCol = Math.max(2, h * 0.01);
+  for (let y = 0; y < h; y++) if (rowCount[y] >= minRow) { y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  for (let x = 0; x < w; x++) if (colCount[x] >= minCol) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
+  if (x1 < x0 || y1 < y0) return false;
+
+  const margin = 3;
+  // Fracción del lado con un salto de brillo marcado entre adentro y afuera.
+  const sideScore = (img: Gray, vertical: boolean, pos: number, from: number, to: number, dir: number) => {
+    let best = 0;
+    for (let off = -2; off <= 2; off++) {
+      const p = pos + off;
+      const pin = p - 2 * dir;
+      const pout = p + 2 * dir;
+      const lim = vertical ? w : h;
+      if (pin < 0 || pout < 0 || pin >= lim || pout >= lim) continue;
+      let hit = 0;
+      let n = 0;
+      for (let t = from; t <= to; t++) {
+        const vin = vertical ? img.data[t * w + pin] : img.data[pin * w + t];
+        const vout = vertical ? img.data[t * w + pout] : img.data[pout * w + t];
+        n++;
+        if (Math.abs(vin - vout) > 20) hit++;
+      }
+      if (n) best = Math.max(best, hit / n);
+    }
+    return best;
+  };
+  const sides: [boolean, number, number, number, number][] = [];
+  if (x0 > margin) sides.push([true, x0, y0, y1, -1]);
+  if (x1 < w - 1 - margin) sides.push([true, x1, y0, y1, 1]);
+  if (y0 > margin) sides.push([false, y0, x0, x1, -1]);
+  if (y1 < h - 1 - margin) sides.push([false, y1, x0, x1, 1]);
+  if (!sides.length) return false;
+  return sides.every(
+    ([vertical, pos, from, to, dir]) =>
+      Math.max(sideScore(a, vertical, pos, from, to, dir), sideScore(b, vertical, pos, from, to, dir)) >= 0.6,
+  );
+}

@@ -12,7 +12,7 @@ test.beforeAll(() => {
   if (!existsSync(fixture)) execFileSync('python3', [path.join(__dirname, 'make_video.py'), fixture], { stdio: 'inherit' });
 });
 
-test('extrae 4 diapositivas recortadas del video sintético', async ({ page }, info) => {
+test('extrae 4 diapositivas recortadas y sin el menú que las tapa', async ({ page }, info) => {
   await page.goto('/');
   await page.getByTestId('file-input').setInputFiles(fixture);
 
@@ -37,5 +37,6 @@ test('extrae 4 diapositivas recortadas del video sintético', async ({ page }, i
     expect(p.imgW).toBeGreaterThan(900);
     expect(p.imgW).toBeLessThan(990);
     expect(p.darkBorder).toBeLessThan(0.05);
+    expect(p.magenta).toBeLessThan(0.001);
   }
 });

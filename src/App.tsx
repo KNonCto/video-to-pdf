@@ -4,7 +4,7 @@ import { CropEditor } from './components/CropEditor';
 import { SlideGrid } from './components/SlideGrid';
 import { Rect } from './lib/image';
 import { loadVideo, formatTime } from './lib/video';
-import { CancelledError, ExtractedSlide, detectCrop, extractSlides } from './lib/pipeline';
+import { CancelledError, ExtractedSlide, chosenImage, detectCrop, extractSlides } from './lib/pipeline';
 
 type Stage = 'idle' | 'detecting' | 'crop' | 'analyzing' | 'review';
 
@@ -37,7 +37,7 @@ export default function App() {
       video.current = null;
     }
     setSlides((prev) => {
-      prev.forEach((s) => URL.revokeObjectURL(s.url));
+      prev.forEach(revokeSlide);
       return [];
     });
     setStage('idle');
@@ -84,14 +84,12 @@ export default function App() {
             setProgressTime(t);
           },
           onAdd: (s) => setSlides((prev) => [...prev, s]),
-          onReplace: (id, s) =>
-            setSlides((prev) =>
-              prev.map((x) => {
-                if (x.id !== id) return x;
-                URL.revokeObjectURL(x.url);
-                return s;
-              }),
-            ),
+          onUpdate: (s) => setSlides((prev) => prev.map((x) => (x.id === s.id ? s : x))),
+          onInsertAfter: (afterId, s) =>
+            setSlides((prev) => {
+              const i = prev.findIndex((x) => x.id === afterId);
+              return i < 0 ? [...prev, s] : [...prev.slice(0, i + 1), s, ...prev.slice(i + 1)];
+            }),
         },
         ctrl.signal,
       );
@@ -112,7 +110,7 @@ export default function App() {
     setPdfBusy(true);
     try {
       const { buildPdf } = await import('./lib/pdf');
-      const blob = await buildPdf(slides);
+      const blob = await buildPdf(slides.map((s) => ({ blob: chosenImage(s).blob, width: s.width, height: s.height })));
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -128,10 +126,16 @@ export default function App() {
     }
   }
 
+  function cycleVariant(id: number) {
+    setSlides((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, chosen: (s.chosen + 1) % s.variants.length } : s)),
+    );
+  }
+
   function removeSlide(id: number) {
     setSlides((prev) => {
       const s = prev.find((x) => x.id === id);
-      if (s) URL.revokeObjectURL(s.url);
+      if (s) revokeSlide(s);
       return prev.filter((x) => x.id !== id);
     });
   }
@@ -235,13 +239,17 @@ export default function App() {
               {pdfBusy ? 'Generando…' : 'Descargar PDF'}
             </button>
           </div>
-          <SlideGrid slides={slides} onRemove={removeSlide} />
+          <SlideGrid slides={slides} onRemove={removeSlide} onCycle={cycleVariant} />
         </section>
       )}
 
       <footer className="muted small">Todo se procesa localmente en tu navegador.</footer>
     </main>
   );
+}
+
+function revokeSlide(s: ExtractedSlide) {
+  s.variants.forEach((v) => URL.revokeObjectURL(v.url));
 }
 
 function Progress({ value }: { value: number }) {

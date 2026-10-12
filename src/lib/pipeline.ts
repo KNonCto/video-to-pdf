@@ -82,20 +82,34 @@ function spread(g: Gray): number {
   return s2 / g.data.length - m * m;
 }
 
+export interface SlideImage {
+  blob: Blob;
+  url: string;
+}
+
 export interface ExtractedSlide {
   id: number;
   start: number;
   end: number;
-  blob: Blob;
-  url: string;
+  /** Versiones de la diapositiva (limpia, con algo encima, animación parcial…). */
+  variants: SlideImage[];
+  /** Índice de la versión que va al PDF. */
+  chosen: number;
   width: number;
   height: number;
+}
+
+export function chosenImage(s: ExtractedSlide): SlideImage {
+  return s.variants[s.chosen];
 }
 
 export interface ExtractCallbacks {
   onProgress: (p: number, time: number) => void;
   onAdd: (s: ExtractedSlide) => void;
-  onReplace: (replacedId: number, s: ExtractedSlide) => void;
+  /** Una diapo ya entregada cambió (nueva versión o cambio de versión elegida). */
+  onUpdate: (s: ExtractedSlide) => void;
+  /** Una versión resultó ser otra diapo: se inserta después de `afterId`. */
+  onInsertAfter: (afterId: number, s: ExtractedSlide) => void;
 }
 
 const ANALYSIS_W = 256;
@@ -117,20 +131,60 @@ export async function extractSlides(
   const pending = document.createElement('canvas');
   const dur = video.duration;
 
+  const slides = new Map<number, ExtractedSlide>();
+  const encodePending = async (): Promise<SlideImage> => {
+    const blob = await canvasToJpeg(pending, 0.9);
+    return { blob, url: URL.createObjectURL(blob) };
+  };
+
   const apply = async (d: ReturnType<SlideDetector['finish']>) => {
     if (!d || d.type === 'skip') return;
-    const blob = await canvasToJpeg(pending, 0.9);
-    const s: ExtractedSlide = {
-      id: d.slide.id,
-      start: d.slide.start,
-      end: d.slide.end,
-      blob,
-      url: URL.createObjectURL(blob),
-      width: pending.width,
-      height: pending.height,
-    };
-    if (d.type === 'add') cb.onAdd(s);
-    else cb.onReplace(d.replacedId, s);
+    if (d.type === 'add') {
+      const s: ExtractedSlide = {
+        id: d.slide.id,
+        start: d.slide.start,
+        end: d.slide.end,
+        variants: [await encodePending()],
+        chosen: 0,
+        width: pending.width,
+        height: pending.height,
+      };
+      slides.set(s.id, s);
+      cb.onAdd(s);
+      return;
+    }
+    if (d.type === 'split') {
+      const from = slides.get(d.from.id);
+      if (!from) return;
+      const [moved] = from.variants.slice(d.removedIndex, d.removedIndex + 1);
+      const rest: ExtractedSlide = {
+        ...from,
+        variants: from.variants.filter((_, i) => i !== d.removedIndex),
+        chosen: d.from.chosen,
+      };
+      slides.set(rest.id, rest);
+      cb.onUpdate(rest);
+      URL.revokeObjectURL(moved.url);
+      const s: ExtractedSlide = {
+        id: d.slide.id,
+        start: d.slide.start,
+        end: d.slide.end,
+        variants: [await encodePending()],
+        chosen: 0,
+        width: pending.width,
+        height: pending.height,
+      };
+      slides.set(s.id, s);
+      cb.onInsertAfter(rest.id, s);
+      return;
+    }
+    const prev = slides.get(d.slide.id);
+    if (!prev) return;
+    const variants = [...prev.variants];
+    if (d.isNew) variants[d.variantIndex] = await encodePending();
+    const s: ExtractedSlide = { ...prev, end: d.slide.end, variants, chosen: d.slide.chosen };
+    slides.set(s.id, s);
+    cb.onUpdate(s);
   };
 
   const n = Math.max(1, Math.floor(dur / step) + 1);
