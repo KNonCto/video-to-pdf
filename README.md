@@ -37,11 +37,12 @@ yt-dlp --no-playlist -f "bv*/b" -P "C:\Users\%USERNAME%\Downloads" -o "%(title)s
 
 1. Arrastra el video a la página o haz clic para elegirlo.
 2. Revisa el recuadro azul: es la zona que se guardará de cada diapositiva. Si no quedó bien, arrástralo o mueve sus bordes.
-3. Elige cada cuánto revisar el video (1 s por defecto) y pulsa **Extraer diapositivas**.
-4. Revisa el resultado:
+3. Elige el tramo con la línea de tiempo (**Desde** / **Hasta**): deja fuera el principio y el final si ahí sólo se ven las cámaras de la gente. Al mover una manilla, la imagen muestra ese momento del video.
+4. Elige cada cuánto revisar el video (1 s por defecto) y pulsa **Extraer diapositivas**.
+5. Revisa el resultado:
    - **Quitar** saca una diapositiva del PDF.
    - **Versión 1/2** aparece cuando hay más de una versión de la misma diapositiva (con un menú encima, una animación a medias…) y cambia la que va al PDF.
-5. Pulsa **Descargar PDF**.
+6. Pulsa **Descargar PDF**.
 
 ### Tiempo y formatos
 

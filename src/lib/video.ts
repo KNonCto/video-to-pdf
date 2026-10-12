@@ -103,3 +103,19 @@ export function formatTime(sec: number): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
+
+/** Fotograma actual del video como imagen (data URL). */
+export function frameDataUrl(video: HTMLVideoElement, quality = 0.85): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d')!.drawImage(video, 0, 0);
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
+/** Interpreta "h:mm:ss", "mm:ss" o segundos. Devuelve null si no es válido. */
+export function parseTime(text: string): number | null {
+  const parts = text.trim().split(':');
+  if (!parts.length || parts.length > 3 || parts.some((p) => !/^\d+(\.\d+)?$/.test(p))) return null;
+  return parts.reduce((acc, p) => acc * 60 + Number(p), 0);
+}

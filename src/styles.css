@@ -148,3 +148,30 @@ select { font: inherit; padding: 4px 8px; border-radius: 6px; border: 1px solid 
   .viewer-nav { width: 36px; height: 36px; font-size: 1.4rem; }
   .variant { width: 140px; }
 }
+
+h3 { font-size: 1rem; margin: 0; }
+.stack.tight { gap: 8px; }
+.timerange { display: flex; flex-direction: column; gap: 10px; }
+.timerange-track { position: relative; height: 28px; }
+.timerange-track::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 11px; height: 6px; border-radius: 99px; background: var(--border);
+}
+.timerange-fill { position: absolute; top: 11px; height: 6px; border-radius: 99px; background: var(--accent); }
+.timerange-track input[type='range'] {
+  position: absolute; inset: 0; width: 100%; margin: 0; background: none; pointer-events: none;
+  -webkit-appearance: none; appearance: none;
+}
+.timerange-track input[type='range']::-webkit-slider-runnable-track { background: none; }
+.timerange-track input[type='range']::-moz-range-track { background: none; }
+.timerange-track input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none; pointer-events: auto; cursor: grab; width: 20px; height: 20px; margin-top: 4px;
+  border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.timerange-track input[type='range']::-moz-range-thumb {
+  pointer-events: auto; cursor: grab; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.timerange-track input[type='range']:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--accent); outline-offset: 2px; }
+.timerange-fields { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.timefield { display: flex; align-items: center; gap: 6px; }
+.timefield .text-input { width: 96px; flex: none; text-align: center; }

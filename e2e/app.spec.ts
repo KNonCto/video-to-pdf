@@ -17,7 +17,15 @@ test('extrae 4 diapositivas recortadas y sin el menú que las tapa', async ({ pa
   await page.getByTestId('file-input').setInputFiles(fixture);
 
   await expect(page.getByRole('heading', { name: 'Revisa el recorte' })).toBeVisible({ timeout: 60_000 });
+  // Tramo: deja fuera los primeros 2 s y el final negro.
+  await page.getByLabel('Desde').fill('0:02');
+  await page.getByLabel('Desde').press('Enter');
+  await page.getByLabel('Hasta').fill('0:56');
+  await page.getByLabel('Hasta').press('Enter');
+  await expect(page.getByLabel('Inicio del tramo')).toHaveValue('2');
+  await expect(page.getByLabel('Fin del tramo')).toHaveValue('56');
   await page.getByRole('button', { name: 'Extraer diapositivas' }).click();
+  await expect(page.getByText('de 0:56')).toBeVisible();
 
   await expect(page.getByTestId('result-title')).toHaveText('4 diapositivas', { timeout: 120_000 });
 

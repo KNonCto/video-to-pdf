@@ -1,7 +1,7 @@
 import { Gray, Rect, boxBlur } from './image';
 import { detectSlideRect, medianImage } from './cropDetect';
 import { SlideDetector, DetectorOptions } from './slideDetector';
-import { FrameGrabber, canvasToJpeg, cropSize, drawCrop, seek } from './video';
+import { FrameGrabber, canvasToJpeg, cropSize, drawCrop, frameDataUrl, seek } from './video';
 
 export class CancelledError extends Error {
   constructor() {
@@ -64,11 +64,7 @@ export async function detectCrop(
   const rect = detectSlideRect(pairs, ref);
 
   await seek(video, previewTime);
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d')!.drawImage(video, 0, 0);
-  return { rect, previewUrl: canvas.toDataURL('image/jpeg', 0.85) };
+  return { rect, previewUrl: frameDataUrl(video) };
 }
 
 function spread(g: Gray): number {
@@ -114,10 +110,11 @@ export interface ExtractCallbacks {
 
 const ANALYSIS_W = 256;
 
-/** Segunda pasada: recorre el video con paso fijo y extrae las diapositivas del recorte. */
+/** Segunda pasada: recorre el tramo [start, end] con paso fijo y extrae las diapositivas del recorte. */
 export async function extractSlides(
   video: HTMLVideoElement,
   rect: Rect,
+  range: { start: number; end: number },
   step: number,
   detectorOpts: Partial<DetectorOptions>,
   cb: ExtractCallbacks,
@@ -187,10 +184,12 @@ export async function extractSlides(
     cb.onUpdate(s);
   };
 
-  const n = Math.max(1, Math.floor(dur / step) + 1);
+  const start = Math.max(0, Math.min(range.start, dur));
+  const end = Math.max(start, Math.min(range.end, dur));
+  const n = Math.max(1, Math.floor((end - start) / step) + 1);
   for (let i = 0; i < n; i++) {
     check(signal);
-    const t = Math.min(i * step, dur);
+    const t = Math.min(start + i * step, end);
     await seek(video, t);
     const gray = boxBlur(grabber.grab(video, aw, ah, rect), 1);
     const r = detector.push(t, gray);

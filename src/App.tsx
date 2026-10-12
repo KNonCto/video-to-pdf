@@ -4,8 +4,9 @@ import { CropEditor } from './components/CropEditor';
 import { SlideGrid } from './components/SlideGrid';
 import { LivePreview } from './components/LivePreview';
 import { SlideViewer } from './components/SlideViewer';
+import { TimeRange } from './components/TimeRange';
 import { Rect } from './lib/image';
-import { loadVideo, formatTime } from './lib/video';
+import { loadVideo, formatTime, frameDataUrl, seek } from './lib/video';
 import { CancelledError, ExtractedSlide, chosenImage, detectCrop, extractSlides } from './lib/pipeline';
 
 type Stage = 'idle' | 'detecting' | 'crop' | 'analyzing' | 'review';
@@ -26,6 +27,9 @@ export default function App() {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [startedAt, setStartedAt] = useState(0);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [range, setRange] = useState({ start: 0, end: 0 });
+  const previewBusy = useRef(false);
+  const previewWanted = useRef<number | null>(null);
 
   const video = useRef<{ video: HTMLVideoElement; url: string } | null>(null);
   const abort = useRef<AbortController | null>(null);
@@ -62,6 +66,7 @@ export default function App() {
       const res = await detectCrop(video.current.video, setProgress, ctrl.signal);
       setRect(res.rect);
       setPreview(res.previewUrl);
+      setRange({ start: 0, end: video.current.video.duration });
       setStage('crop');
     } catch (e) {
       handleError(e);
@@ -80,6 +85,7 @@ export default function App() {
       await extractSlides(
         video.current.video,
         rect,
+        range,
         step,
         { mergeBuilds },
         {
@@ -101,6 +107,25 @@ export default function App() {
     } catch (e) {
       if (e instanceof CancelledError) setStage('review');
       else handleError(e);
+    }
+  }
+
+  /** Muestra en el editor el fotograma del instante `t` (sin acumular saltos si se arrastra rápido). */
+  async function showFrameAt(t: number) {
+    const v = video.current?.video;
+    if (!v) return;
+    previewWanted.current = t;
+    if (previewBusy.current) return;
+    previewBusy.current = true;
+    try {
+      while (previewWanted.current !== null) {
+        const target = previewWanted.current;
+        previewWanted.current = null;
+        await seek(v, target);
+        setPreview(frameDataUrl(v, 0.8));
+      }
+    } finally {
+      previewBusy.current = false;
     }
   }
 
@@ -189,6 +214,20 @@ export default function App() {
             El recuadro azul es lo que se guardará de cada diapositiva. Arrástralo o mueve sus bordes si hace falta.
           </p>
           <CropEditor imageUrl={preview} rect={rect} onChange={setRect} />
+          <div className="stack tight">
+            <h3>¿Desde dónde hasta dónde?</h3>
+            <p className="muted small">
+              Deja fuera el principio y el final si ahí se ven las cámaras de la gente en vez de diapositivas. Al mover
+              una manilla, la imagen de arriba muestra ese momento del video.
+            </p>
+            <TimeRange
+              duration={video.current?.video.duration ?? 0}
+              start={range.start}
+              end={range.end}
+              onChange={(start, end) => setRange({ start, end })}
+              onPreview={showFrameAt}
+            />
+          </div>
           <div className="options">
             <label>
               Revisar cada{' '}
@@ -223,7 +262,7 @@ export default function App() {
           </h2>
           <Progress value={progress} />
           <p className="muted small">
-            Minuto {formatTime(progressTime)} de {formatTime(video.current?.video.duration ?? 0)} {eta && `· ${eta}`}
+            Minuto {formatTime(progressTime)} de {formatTime(range.end)} {eta && `· ${eta}`}
           </p>
           <div className="row">
             <button className="ghost" onClick={() => abort.current?.abort()}>
