@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { FileDrop } from './components/FileDrop';
 import { CropEditor } from './components/CropEditor';
 import { SlideGrid } from './components/SlideGrid';
+import { LivePreview } from './components/LivePreview';
 import { Rect } from './lib/image';
 import { loadVideo, formatTime } from './lib/video';
 import { CancelledError, ExtractedSlide, chosenImage, detectCrop, extractSlides } from './lib/pipeline';
@@ -221,6 +222,7 @@ export default function App() {
               Detener y usar lo encontrado
             </button>
           </div>
+          {video.current && <LivePreview video={video.current.video} rect={rect} captured={slides.length} />}
           <SlideGrid slides={slides} />
         </section>
       )}

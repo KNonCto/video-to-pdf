@@ -86,11 +86,3 @@ npm run build      # build estático en dist/
 ```
 
 El test de punta a punta genera un video sintético (`e2e/make_video.py`) con bordes negros, una "cámara" en movimiento, una animación, un menú que tapa una diapositiva y una vuelta a una diapositiva anterior. Después verifica que el PDF tenga exactamente las 4 diapositivas esperadas, limpias y bien recortadas.
-
-## Publicar tu propia copia
-
-1. Haz un fork del repositorio.
-2. En tu fork, ve a **Settings → Pages → Source: GitHub Actions**.
-3. Cada push a `main` ejecuta `.github/workflows/deploy.yml`, que corre los tests, hace el build y publica la página en `https://<tu-usuario>.github.io/video-to-pdf/`.
-
-Si el despliegue falla con "Branch main is not allowed to deploy to github-pages", ve a **Settings → Environments → github-pages** y agrega `main` a las ramas permitidas.
