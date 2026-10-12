@@ -200,7 +200,7 @@ export default function App() {
         {stage === 'idle' && <FileDrop onFile={onFile} />}
 
         {stage === 'detecting' && (
-          <div className="panel placeholder">
+          <div className="placeholder">
             <strong>Buscando dónde está la diapositiva…</strong>
             <Progress value={progress} />
             <span className="muted small">Se revisan fotogramas de todo el video para encontrar la zona de las diapositivas.</span>
@@ -258,107 +258,107 @@ export default function App() {
       </main>
 
       <aside className="sidebar">
-        <div className="side-top panel">
-          <header className="stack tight">
+        <div className="side-top">
+          <header className="side-header">
             <h1>Video a PDF de diapositivas</h1>
             <p className="muted small">
               Saca las diapositivas de la grabación de una clase: recorta bordes y cámara, y omite las repetidas.
             </p>
           </header>
 
-          {error && (
-            <div className="error" role="alert">
-              {error}
-            </div>
-          )}
+          <div className="side-actions">
+            {error && (
+              <div className="error" role="alert">
+                {error}
+              </div>
+            )}
 
-          {fileName && stage !== 'idle' && (
-            <p className="file-name small" title={fileName}>
-              🎬 {fileName}
-            </p>
-          )}
+            {fileName && stage !== 'idle' && (
+              <p className="file-name small" title={fileName}>
+                🎬 {fileName}
+              </p>
+            )}
 
-          {stage === 'idle' && (
-            <p className="muted small">Para empezar, arrastra el video de la clase al panel de la izquierda.</p>
-          )}
+            {stage === 'idle' && (
+              <p className="muted small">Para empezar, arrastra el video de la clase al panel de la izquierda.</p>
+            )}
 
-          {stage === 'detecting' && (
-            <div className="row">
-              <button className="ghost" onClick={reset}>
+            {stage === 'detecting' && (
+              <button className="ghost wide" onClick={reset}>
                 Cancelar
               </button>
-            </div>
-          )}
+            )}
 
-          {stage === 'crop' && (
-            <div className="stack tight">
-              <label className="option">
-                Revisar cada{' '}
-                <select value={step} onChange={(e) => setStep(Number(e.target.value))}>
-                  {STEPS.map((s) => (
-                    <option key={s} value={s}>
-                      {s} s
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="option">
-                <input type="checkbox" checked={mergeBuilds} onChange={(e) => setMergeBuilds(e.target.checked)} /> Unir
-                animaciones (guardar sólo la diapo completa)
-              </label>
-              <button className="primary wide" onClick={analyze}>
-                Extraer diapositivas
-              </button>
-              <button className="ghost wide" onClick={reset}>
-                Elegir otro video
-              </button>
-            </div>
-          )}
-
-          {stage === 'analyzing' && (
-            <div className="stack tight">
-              <strong>Extrayendo diapositivas… {slides.length} encontradas</strong>
-              <Progress value={progress} />
-              <span className="muted small">
-                Minuto {formatTime(progressTime)} de {formatTime(range.end)} {eta && `· ${eta}`}
-              </span>
-              <button className="ghost wide" onClick={() => abort.current?.abort()}>
-                Detener y usar lo encontrado
-              </button>
-              <button className="ghost wide" onClick={reset}>
-                Empezar de nuevo
-              </button>
-            </div>
-          )}
-
-          {stage === 'review' && (
-            <div className="stack tight">
-              <strong data-testid="result-title">{slides.length} diapositivas</strong>
-              <span className="muted small" data-testid="selected-count">
-                {selected.length} de {slides.length} seleccionadas para el PDF
-              </span>
-              <div className="row">
-                <button className="ghost small" onClick={() => setExcluded(new Set())}>
-                  Marcar todas
+            {stage === 'crop' && (
+              <div className="stack tight">
+                <label className="option">
+                  Revisar cada{' '}
+                  <select value={step} onChange={(e) => setStep(Number(e.target.value))}>
+                    {STEPS.map((s) => (
+                      <option key={s} value={s}>
+                        {s} s
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="option">
+                  <input type="checkbox" checked={mergeBuilds} onChange={(e) => setMergeBuilds(e.target.checked)} /> Unir
+                  animaciones (guardar sólo la diapo completa)
+                </label>
+                <button className="primary wide" onClick={analyze}>
+                  Extraer diapositivas
                 </button>
-                <button className="ghost small" onClick={() => setExcluded(new Set(slides.map((s) => s.id)))}>
-                  Desmarcar todas
+                <button className="ghost wide" onClick={reset}>
+                  Elegir otro video
                 </button>
               </div>
-              <button className="primary wide" onClick={downloadPdf} disabled={!selected.length || pdfBusy}>
-                {pdfBusy ? 'Generando…' : `Descargar PDF (${selected.length})`}
-              </button>
-              <button className="ghost wide" onClick={() => setStage('crop')} disabled={!video.current}>
-                Cambiar recorte o tramo
-              </button>
-              <button className="ghost wide" onClick={reset}>
-                Empezar de nuevo
-              </button>
-            </div>
-          )}
+            )}
+
+            {stage === 'analyzing' && (
+              <div className="stack tight">
+                <strong>Extrayendo diapositivas… {slides.length} encontradas</strong>
+                <Progress value={progress} />
+                <span className="muted small">
+                  Minuto {formatTime(progressTime)} de {formatTime(range.end)} {eta && `· ${eta}`}
+                </span>
+                <button className="ghost wide" onClick={() => abort.current?.abort()}>
+                  Detener y usar lo encontrado
+                </button>
+                <button className="ghost wide" onClick={reset}>
+                  Empezar de nuevo
+                </button>
+              </div>
+            )}
+
+            {stage === 'review' && (
+              <div className="stack tight">
+                <strong data-testid="result-title">{slides.length} diapositivas</strong>
+                <span className="muted small" data-testid="selected-count">
+                  {selected.length} de {slides.length} seleccionadas para el PDF
+                </span>
+                <div className="row">
+                  <button className="ghost small" onClick={() => setExcluded(new Set())}>
+                    Marcar todas
+                  </button>
+                  <button className="ghost small" onClick={() => setExcluded(new Set(slides.map((s) => s.id)))}>
+                    Desmarcar todas
+                  </button>
+                </div>
+                <button className="primary wide" onClick={downloadPdf} disabled={!selected.length || pdfBusy}>
+                  {pdfBusy ? 'Generando…' : `Descargar PDF (${selected.length})`}
+                </button>
+                <button className="ghost wide" onClick={() => setStage('crop')} disabled={!video.current}>
+                  Cambiar recorte o tramo
+                </button>
+                <button className="ghost wide" onClick={reset}>
+                  Empezar de nuevo
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="side-help panel">
+        <div className="side-help">
           <YtDlpHelper />
           <p className="muted small privacy">Todo se procesa localmente en tu navegador: el video no se sube a ningún servidor.</p>
         </div>

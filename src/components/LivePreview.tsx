@@ -29,12 +29,14 @@ export function LivePreview({ video, rect, captured }: { video: HTMLVideoElement
 
   const pct = (v: number) => `${v * 100}%`;
   return (
-    <div className="live" ref={box} data-testid="live-preview">
-      <div
-        className={`live-rect ${flash ? 'flash' : ''}`}
-        style={{ left: pct(rect.x), top: pct(rect.y), width: pct(rect.w), height: pct(rect.h) }}
-      />
-      {flash && <span className="live-badge">Diapositiva {captured} guardada</span>}
+    <div className="live" data-testid="live-preview">
+      <div className="live-inner" ref={box}>
+        <div
+          className={`live-rect ${flash ? 'flash' : ''}`}
+          style={{ left: pct(rect.x), top: pct(rect.y), width: pct(rect.w), height: pct(rect.h) }}
+        />
+        {flash && <span className="live-badge">Diapositiva {captured} guardada</span>}
+      </div>
     </div>
   );
 }
